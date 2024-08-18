@@ -22,9 +22,9 @@ class Commande extends Model
         'status'
     ];
 
-    public function produit(): BelongsToMany
+    public function produits(): BelongsToMany
     {
-        return $this->belongsToMany(Produit::class, 'produit_commandes')->withPivot('quantite', 'prixUnitaire');
+        return $this->belongsToMany(Produit::class, 'produit_commandes')->withPivot('quantite');
     }
 
     public function user(): BelongsTo

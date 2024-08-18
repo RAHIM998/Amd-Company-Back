@@ -23,12 +23,12 @@ class Produit extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Categorie::class);
+        return $this->belongsTo(Category::class);
     }
 
 
-    public function commande(): BelongsToMany
+    public function commandes(): BelongsToMany
     {
-        return $this->belongsToMany(Commande::class, 'produit_commandes')->withPivot('quantite', 'prixUnitaire');
+        return $this->belongsToMany(Commande::class, 'produit_commandes')->withPivot('quantite');
     }
 }
