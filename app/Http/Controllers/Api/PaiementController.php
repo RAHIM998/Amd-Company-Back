@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Commande;
 use App\Models\Paiement;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Mockery\Exception;
 
@@ -26,31 +25,56 @@ class PaiementController extends Controller
     //----------------------------------------------------------------------Payements du jours-------------------------------------------------------------------
     public function paiementjournalier()
     {
-        $paiementDuJour = Paiement::whereDate('created_at', Carbon::today())->with('commande')->get();
+        $paiementDuJour = Paiement::whereDate('created_at', Carbon::today())
+            ->where('status', true)
+            ->with('commande')
+            ->get();
 
-        return $this->jsonResponse(true, "Liste des paiements du jour", $paiementDuJour);
+        $montantTotal = $paiementDuJour->sum('montant');
+
+        return $this->jsonResponse(true, "Liste des paiements du jour", [
+            'CAJournalier' => $montantTotal,
+            'PaiementDuJour' => $paiementDuJour,
+        ]);
     }
 
+
+    //----------------------------------------------------------------------Payements du jours-------------------------------------------------------------------
+    public function paiementEnAttentes()
+    {
+        $paiementEnAttente= Paiement::where('status', false)->with('commande')->get();
+
+        $montantTotal = $paiementEnAttente->sum('montant');
+
+        return $this->jsonResponse(true, "Liste des paiements du jour", [
+            'MontantPaiementEnAttente:' => $montantTotal,
+            'PaiementDuJour' => $paiementEnAttente,
+        ]);
+    }
+
+
     //---------------------------------------------------------------------Api de sauvegarde des paiements---------------------------------------------------
-    public function store($commandeId)
+    public function store(Request $request)
     {
         try {
-            $commande = Commande::findOrFail($commandeId);
+            $validated = $request->validate([
+                'commande_id' => 'required|exists:commandes,id',
+                'method' => 'required|in:delivery,orange_money',
+            ]);
 
-            if ($commande){
-                $paiement = new Paiement();
-                $paiement->commande_id = $commande->id;
-                $paiement->montant = $commande->montant;
-                $paiement->datePaiement = now();
-                $paiement->save();
+            $commande = Commande::findOrFail($validated['commande_id']);
 
-                return $this->jsonResponse(true, 'Paiement enregistré avec succès !', $paiement, 201);
+            $paiement = Paiement::create([
+                'commande_id' => $commande->id,
+                'montant' => $commande->montant,
+                'datePaiement' => $validated['method'] === 'orange_money' ? now() : null,
+                'method' => $validated['method'],
+                'status' => $validated['method'] === 'orange_money' ? true : false,
+            ]);
 
-            }
-        }catch (ModelNotFoundException $e) {
-            return $this->jsonResponse(false, 'Commande non trouvée.', [], 404);
-        }catch (\Exception $exception){
-            return $this->jsonResponse(false, 'Erreur de chargement du paiement dans la bd !', $exception->getMessage(), 500);
+            return $this->jsonResponse(true, 'Paiement enregistré avec succès !', $paiement, 201);
+        } catch (\Exception $exception) {
+            return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
         }
     }
 

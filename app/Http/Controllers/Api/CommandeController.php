@@ -9,6 +9,7 @@ use App\Mail\CommandeAnnulee;
 use App\Mail\CommandeLivree;
 use App\Mail\CommandeRecue;
 use App\Models\Commande;
+use App\Models\Paiement;
 use App\Models\Produit;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -138,12 +139,10 @@ class CommandeController extends Controller
             $statut = $request->input("status");
             $commande = Commande::findOrFail($id);
 
-            // Vérifier si la transition est valide
             if ($this->canTransitionTo($commande, $statut, $user)) {
                 $commande->status = $statut;
                 $commande->save();
 
-                // Effectuer les actions en fonction du statut
                 switch ($statut) {
                     case 'accepted':
                         Mail::to($commande->user->email)->send(new CommandeAcceptee($commande));
@@ -151,26 +150,44 @@ class CommandeController extends Controller
                         break;
 
                     case 'rejected':
+                        foreach ($commande->produits as $produit) {
+                            $produit->increment('stock', $produit->pivot->quantite);
+                        }
+
+                        $paiement = Paiement::where('commande_id', $commande->id)->first();
+                        if ($paiement) {
+                            $paiement->delete();
+                        }
+
                         Mail::to($commande->user->email)->send(new CommandeAnnulee($commande));
                         $this->destroy($commande->id);
                         return $this->jsonResponse(true, "Commande annulée avec succès !");
                         break;
 
                     case 'delivered':
+                        // Mettre à jour le paiement si le paiement était à la livraison
+                        $paiement = Paiement::where('commande_id', $commande->id)->first();
+                        if ($paiement) {
+                            if ($paiement->method === 'delivery' && !$paiement->status) {
+                                $paiement->update([
+                                    'status' => 1,
+                                    'datePaiement' => now(),
+                                ]);
+                            }
+                        }
+
                         Mail::to($commande->user->email)->send(new CommandeLivree($commande));
-                        $paie = new PaiementController();
-                        $paie->store($commande->id);
                         return $this->jsonResponse(true, "Commande livrée avec succès !");
                         break;
                 }
-
             } else {
                 return $this->jsonResponse(false, "Changement de statut non autorisé.", [], 403);
             }
-        }catch (\Exception $exception){
+        } catch (\Exception $exception) {
             return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
         }
     }
+
 
     //-------------------------------------------------------------------------Api d'annulation de commande-----------------------------------------------------------
     public function destroy(string $id)
@@ -209,12 +226,12 @@ class CommandeController extends Controller
     public function commandeValideeDuJour()
     {
         $commandeValideDuJour = Commande::whereDate('created_at', Carbon::today())
-            ->where('status', 'paid')
+            ->where('status', 'delivered')
             ->get();
 
         $NbCommandeDuJour = $commandeValideDuJour->count();
 
-        $totalAmount = $commandeValideDuJour->sum('amountOrder');
+        $totalAmount = $commandeValideDuJour->sum('montant');
 
         return $this->jsonResponse(true, "Liste des commandes validées du jour", [
             'nbCommandeValide' => $NbCommandeDuJour,
@@ -232,7 +249,7 @@ class CommandeController extends Controller
 
         $NbCommandeAnnuleeDuJour = $commandeAnnulee->count();
 
-        $totalAmount = $commandeAnnulee->sum('amountOrder');
+        $totalAmount = $commandeAnnulee->sum('montant');
 
         return $this->jsonResponse(true, "Liste des commandes annulées du jour", [
             'NbCommandeAnnulee' => $NbCommandeAnnuleeDuJour,

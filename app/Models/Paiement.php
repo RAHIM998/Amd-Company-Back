@@ -15,7 +15,9 @@ class Paiement extends Model
     protected $fillable = [
         'commande_id',
         'montant',
-        'datePaiement'
+        'datePaiement',
+        'method',
+        'status'
     ];
 
     public function commande(): BelongsTo
