@@ -18,8 +18,8 @@ return new class extends Migration
             $table->date('dateCommande');
             $table->string('montant');
             $table->string('adresseLivraison');
-            $table->enum('status', ['confirmation en attente', 'commande confirmée',
-                'commande annulee','en cours de livraison', 'commande livree'])->default('confirmation en attente');
+            $table->enum('status', ['pending', 'accepted', 'rejected', 'delivered'])
+                ->default('pending');
             $table->timestamps();
             $table->softDeletes();
         });

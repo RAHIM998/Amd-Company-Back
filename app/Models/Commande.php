@@ -3,11 +3,16 @@
 namespace App\Models;
 
 //use App\Notifications\StatusCommandeChangeNotification;
+use App\Mail\CommandeAcceptee;
+use App\Mail\CommandeAnnulee;
+use App\Mail\CommandeLivree;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Mail;
 
 class Commande extends Model
 {
@@ -32,44 +37,15 @@ class Commande extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function retour(): BelongsTo
+    public function retour(): HasOne
     {
-        return $this->belongsTo(Retour::class);
+        return $this->hasOne(Retours::class, 'commande_id');
     }
 
-    public function paiement(): BelongsTo
+    public function paiement(): HasOne
     {
-        return $this->belongsTo(Paiement::class);
+        return $this->hasOne(Paiement::class, 'commande_id');
     }
 
 
-    /*public static $statusTransitions = [
-        'admin' => [
-            'confirmation en attente' => ['commande confirmée', 'commande annulée'],
-            'commande confirmée' => ['en cours de livraison'],
-            'en cours de livraison' => ['commande livrée']
-        ],
-        'livraison' => [
-            'commande confirmée' => ['en cours de livraison'],
-            'en cours de livraison' => ['commande livrée']
-        ],
-        // Ajoutez d'autres règles pour d'autres rôles si nécessaire
-    ];
-
-    public function Transition($newStatus, $user)
-    {
-        $statutActuel = $this->status;
-        $verifAutorisation = self::$statusTransitions[$user->role] ?? [];
-
-        return in_array($newStatus, $verifAutorisation[$statutActuel] ?? []);
-    }
-
-    public function updateStatus($newStatus)
-    {
-        $this->status = $newStatus;
-        $this->save();
-
-        // Envoyer une notification au client
-        $this->user->notify(new StatusCommandeChangeNotification($this, $newStatus));
-    }*/
 }

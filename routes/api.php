@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CommandeController;
+use App\Http\Controllers\Api\PaiementController;
 use App\Http\Controllers\Api\ProduitController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 Route::group(['middleware' => 'guest'], function () {
     Route::post('login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
     Route::post('register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
+    Route::get('/paiement/jours', [PaiementController::class, 'paiementjournalier']);
+
 });
 
 
@@ -46,6 +49,17 @@ Route::group(['middleware' => 'auth:api'], function () {
     //Api Commande
     Route::get('commande', [CommandeController::class, 'index']);
     Route::post('commande', [CommandeController::class, 'store']);
+    Route::get('commande/{id}', [CommandeController::class, 'show']);
+    Route::put('commande/{id}', [CommandeController::class, 'update']);
+    Route::get('commande/encours', [CommandeController::class, 'commandeEnCoursDuJour']);
+    Route::get('commande/annulee', [CommandeController::class, 'commandeAnnuleeDuJour']);
+    Route::get('commande/valide', [CommandeController::class, 'commandeValideeDuJour']);
+
+    //Api Paiements
+    Route::get('paiement', [PaiementController::class, 'index']);
+    Route::post('paiement', [PaiementController::class, 'store']);
+    Route::get('paiement/{id}', [PaiementController::class, 'show']);
+
 
 });
 

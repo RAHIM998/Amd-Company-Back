@@ -46,6 +46,7 @@ class UserController extends Controller
             ]);
 
 
+
             return $this->jsonResponse(true, "Utilisateur créé avec succès !", $users, 201);
 
         }catch (\Exception $exception){

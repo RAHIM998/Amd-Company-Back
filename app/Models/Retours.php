@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -17,8 +18,9 @@ class Retours extends Model
         'status'
     ];
 
-    public function commande(): HasMany
+
+    public function commande(): BelongsTo
     {
-        return $this->hasMany(Commande::class);
+        return $this->belongsTo(Commande::class);
     }
 }

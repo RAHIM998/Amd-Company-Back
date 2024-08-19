@@ -4,17 +4,43 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CommandeRequest;
+use App\Mail\CommandeAcceptee;
+use App\Mail\CommandeAnnulee;
+use App\Mail\CommandeLivree;
 use App\Mail\CommandeRecue;
 use App\Models\Commande;
 use App\Models\Produit;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Mockery\Exception;
 
 class CommandeController extends Controller
 {
+    //------------------------------------------------------------Méthode de vérification du statut------------------------------------------------------
+    public static $statusTransitions = [
+        'admin' => [
+            'pending' => ['accepted', 'rejected'],
+            'accepted' => ['delivered'],
+            'rejected' => [],
+            'delivered' => []
+        ],
+        'user' => [
+            'pending' => ['cancelled'],
+        ],
+    ];
+
+    // Vérifie si la transition de statut est autorisée
+    protected function canTransitionTo(Commande $commande, $newStatus, $user)
+    {
+        $currentStatus = $commande->status;
+        $allowedTransitions = self::$statusTransitions[$user->role] ?? [];
+
+        return in_array($newStatus, $allowedTransitions[$currentStatus] ?? []);
+    }
+
     //------------------------------------------------------------------------Api d'affichage des commandes-------------------------------------------------
     public function index()
     {
@@ -70,7 +96,7 @@ class CommandeController extends Controller
                 'dateCommande' => now(),
                 'montant' => $totalCommande,
                 'adresseLivraison' => $validated['adresseLivraison'],
-                'status' => 'confirmation en attente',
+                'status' => 'pending',
             ]);
 
             foreach ($TabCommande as $CommandeId => $prod) {
@@ -94,18 +120,125 @@ class CommandeController extends Controller
     //----------------------------------------------------------------------Api d'affichage des détails d'une commande----------------------------------------
     public function show(string $id)
     {
+        try{
+            $commande = Commande::with('produits')->findOrFail($id);
 
+            return $this->jsonResponse(true, "Commande", $commande);
+
+        }catch (Exception $exception){
+            return $this->jsonResponse(true, 'Erreur !', $exception->getMessage(), 500);
+        }
     }
 
     //-----------------------------------------------------------------------Api de modification du statut d'une commande---------------------------------------
     public function update(Request $request, string $id)
     {
-        //
+        try {
+            $user = Auth::user();
+            $statut = $request->input("status");
+            $commande = Commande::findOrFail($id);
+
+            // Vérifier si la transition est valide
+            if ($this->canTransitionTo($commande, $statut, $user)) {
+                $commande->status = $statut;
+                $commande->save();
+
+                // Effectuer les actions en fonction du statut
+                switch ($statut) {
+                    case 'accepted':
+                        Mail::to($commande->user->email)->send(new CommandeAcceptee($commande));
+                        return $this->jsonResponse(true, "Statut modifié avec succès !", $commande);
+                        break;
+
+                    case 'rejected':
+                        Mail::to($commande->user->email)->send(new CommandeAnnulee($commande));
+                        $this->destroy($commande->id);
+                        return $this->jsonResponse(true, "Commande annulée avec succès !");
+                        break;
+
+                    case 'delivered':
+                        Mail::to($commande->user->email)->send(new CommandeLivree($commande));
+                        $paie = new PaiementController();
+                        $paie->store($commande->id);
+                        return $this->jsonResponse(true, "Commande livrée avec succès !");
+                        break;
+                }
+
+            } else {
+                return $this->jsonResponse(false, "Changement de statut non autorisé.", [], 403);
+            }
+        }catch (\Exception $exception){
+            return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
+        }
     }
 
     //-------------------------------------------------------------------------Api d'annulation de commande-----------------------------------------------------------
     public function destroy(string $id)
     {
-        //
+        try {
+            $commande = Commande::findOrFail($id);
+            $commande->delete();
+
+            return $this->jsonResponse(true, "Commande annulée et supprimée avec succès !", $commande);
+        } catch (\Exception $exception) {
+            return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
+        }
     }
+
+
+
+
+    //---------------------------------------------------------Commandes en cours de la journée---------------------------------------------------------------------------
+
+    public function commandeEnCoursDuJour()
+    {
+        $commandeEnCoursJournee= Commande::whereDate('created_at', Carbon::today())
+            ->where('status', 'pending')
+            ->get();
+
+         $NbcommandeEnCoursJournee= $commandeEnCoursJournee->count();
+
+        return $this->jsonResponse(true, "Liste des commandes en cours du jour", [
+            'total' => $NbcommandeEnCoursJournee,
+            'orders' => $commandeEnCoursJournee
+        ]);
+    }
+
+
+    //---------------------------------------------------------Commandes validées de la journée---------------------------------------------------------------------------
+    public function commandeValideeDuJour()
+    {
+        $commandeValideDuJour = Commande::whereDate('created_at', Carbon::today())
+            ->where('status', 'paid')
+            ->get();
+
+        $NbCommandeDuJour = $commandeValideDuJour->count();
+
+        $totalAmount = $commandeValideDuJour->sum('amountOrder');
+
+        return $this->jsonResponse(true, "Liste des commandes validées du jour", [
+            'nbCommandeValide' => $NbCommandeDuJour,
+            'MontantTotal' => $totalAmount,
+            'commandes' => $commandeValideDuJour
+        ]);
+    }
+
+    //---------------------------------------------------------Commandes annulées de la journée---------------------------------------------------------------------------
+    public function commandeAnnuleeDuJour()
+    {
+        $commandeAnnulee= Commande::onlyTrashed()
+            ->whereDate('deleted_at', Carbon::today())
+            ->get();
+
+        $NbCommandeAnnuleeDuJour = $commandeAnnulee->count();
+
+        $totalAmount = $commandeAnnulee->sum('amountOrder');
+
+        return $this->jsonResponse(true, "Liste des commandes annulées du jour", [
+            'NbCommandeAnnulee' => $NbCommandeAnnuleeDuJour,
+            'MontantTotal' => $totalAmount,
+            'Commande' => $commandeAnnulee
+        ]);
+    }
+
 }

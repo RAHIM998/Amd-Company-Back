@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Passport\Token;
 use Mockery\Exception;
+use Laravel\Passport\PersonalAccessTokenResult;
 
 class AuthController extends Controller
 {
