@@ -23,46 +23,54 @@ Route::group(['middleware' => 'auth:api'], function () {
     //Api de déconnexion
     Route::post('logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
 
-    //Api Users
-    Route::post('user', [UserController::class, 'store']);
+    //Api user
     Route::get('user', [UserController::class, 'index']);
     Route::get('user/{id}', [UserController::class, 'show']);
     Route::put('user/{id}', [UserController::class, 'update']);
-    Route::delete('user/{id}', [UserController::class, 'destroy']);
 
     //Api Catégories
     Route::get('category', [CategoryController::class, 'index']);
-    Route::post('category', [CategoryController::class, 'store']);
-    Route::get('category/{id}', [CategoryController::class, 'show']);
-    Route::put('category/{id}', [CategoryController::class, 'update']);
-    Route::delete('category/{id}', [CategoryController::class, 'destroy']);
-    Route::get('search', [CategoryController::class, 'search']);
+    Route::get('/search', [CategoryController::class, 'search']);
+    Route::get('/category/{id}', [CategoryController::class, 'show']);
 
     //Api produit
     Route::get('produit', [ProduitController::class, 'index']);
-    Route::post('produit', [ProduitController::class, 'store']);
     Route::get('produit/{id}', [ProduitController::class, 'show']);
-    Route::put('produit/{id}', [ProduitController::class, 'update']);
-    Route::delete('produit/{id}', [ProduitController::class, 'destroy']);
     Route::get('search', [ProduitController::class, 'search']);
 
     //Api Commande
-    Route::get('commande/encours', [CommandeController::class, 'commandeEnCoursDuJour']);
-    Route::get('commande/annulee', [CommandeController::class, 'commandeAnnuleeDuJour']);
-    Route::get('commande/valide', [CommandeController::class, 'commandeValideeDuJour']);
-    Route::get('commande', [CommandeController::class, 'index']);
     Route::post('commande', [CommandeController::class, 'store']);
     Route::get('commande/{id}', [CommandeController::class, 'show']);
-    Route::put('commande/{id}', [CommandeController::class, 'update']);
+    Route::get('commande', [CommandeController::class, 'index']);
 
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        //Api Users
+        Route::post('/user', [UserController::class, 'store']);
+        Route::delete('/user/{id}', [UserController::class, 'destroy']);
 
-    //Api Paiements
-    Route::get('/paiement/jours', [PaiementController::class, 'paiementjournalier']);
-    Route::get('/paiement/enAttente', [PaiementController::class, 'paiementEnAttentes']);
-    Route::get('paiement', [PaiementController::class, 'index']);
-    Route::post('paiement', [PaiementController::class, 'store']);
-    Route::get('paiement/{id}', [PaiementController::class, 'show']);
+        //Api Catégories
+        Route::post('/category', [CategoryController::class, 'store']);
+        Route::put('/category/{id}', [CategoryController::class, 'update']);
+        Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
 
+        //Api produit
+        Route::post('/produit', [ProduitController::class, 'store']);
+        Route::put('/produit/{id}', [ProduitController::class, 'update']);
+        Route::delete('/produit/{id}', [ProduitController::class, 'destroy']);
+
+        //Api Commande
+        Route::get('/commande/encours', [CommandeController::class, 'commandeEnCoursDuJour']);
+        Route::get('/commande/annulee', [CommandeController::class, 'commandeAnnuleeDuJour']);
+        Route::get('/commande/valide', [CommandeController::class, 'commandeValideeDuJour']);
+        Route::put('/commande/{id}', [CommandeController::class, 'update']);
+
+        //Api Paiements
+        Route::get('/paiement/jours', [PaiementController::class, 'paiementjournalier']);
+        Route::get('/paiement/enAttente', [PaiementController::class, 'paiementEnAttentes']);
+        Route::get('/paiement', [PaiementController::class, 'index']);
+        Route::post('/paiement', [PaiementController::class, 'store']);
+        Route::get('/paiement/{id}', [PaiementController::class, 'show']);
+    });
 
 });
 

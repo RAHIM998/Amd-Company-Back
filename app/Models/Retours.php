@@ -18,9 +18,9 @@ class Retours extends Model
         'status'
     ];
 
-
     public function commande(): BelongsTo
     {
         return $this->belongsTo(Commande::class);
     }
+
 }
