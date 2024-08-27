@@ -47,6 +47,8 @@ class AuthController extends Controller
             if ($request->hasFile('image')) {
                 $image = $this->imageToBlob($request->file('image'));
                 $validatedData['image'] = $image;
+            }else {
+                $validatedData['image'] = null;
             }
 
             $users = User::create([

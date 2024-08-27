@@ -14,7 +14,7 @@ class CategoryController extends Controller
     public function index()
     {
         try {
-            $category = Category::with('produit')->paginate(5);
+            $category = Category::with('produit')->get();
             return $this->jsonResponse(true, 'Liste des catégories ', $category );
 
         }catch (Exception $exception){

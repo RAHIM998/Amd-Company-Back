@@ -21,12 +21,13 @@ class ProduitRequest extends FormRequest
      */
     public function rules(): array
     {
+
         return [
             'category_id' => 'required|integer|exists:categories,id',
             'libelle' => 'required|string|max:255|regex:/^[\pL\s]+$/u',
             'prix' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'image.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }

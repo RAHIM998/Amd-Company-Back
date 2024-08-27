@@ -17,7 +17,6 @@ class Produit extends Model
         'libelle',
         'prix',
         'stock',
-        'image',
         'description',
     ];
 
@@ -30,5 +29,10 @@ class Produit extends Model
     public function commandes(): BelongsToMany
     {
         return $this->belongsToMany(Commande::class, 'produit_commandes')->withPivot('quantite');
+    }
+
+    public function images(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProduitImage::class);
     }
 }

@@ -27,7 +27,7 @@ class UserRequest extends FormRequest
             'telephone' => ['required', 'regex:/^(\+\d{1,4})?\d+$/'],
             'email' => ['required', 'email', 'unique:users,email'],
             'role' => [Rule::in(['admin', 'user'])],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'image' => 'nullable|image',
             'password' => ['required', 'min:4'],
         ];
     }
@@ -44,7 +44,6 @@ class UserRequest extends FormRequest
             'email.email' => 'L\'email doit être une adresse valide !!',
             'email.unique' => 'Cet email est déjà utilisé. Veuillez vous connecter !!',
             'role.required' => 'Le rôle est obligatoire !!',
-            'image' => 'Le champ image est optionnel. Si fourni, il doit être un fichier image de type jpg, jpeg ou png, et ne doit pas dépasser 2 Mo.',
             'role.in' => 'Le rôle sélectionné n\'est pas valide !!',
             'password.required' => 'Le mot de passe est obligatoire !!',
             'password.min' => 'Pour des raisons de sécurité, le mot de passe doit contenir au moins 4 caractères !!',
