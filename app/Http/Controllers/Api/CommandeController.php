@@ -47,19 +47,29 @@ class CommandeController extends Controller
     {
         $user = Auth::user();
 
+        // Récupérer les commandes avec les produits et les images associées
         if ($user->isAdmin()) {
-            // Récupérer toutes les commandes avec les produits associés et les données de la table pivot
-            $commandes = Commande::with('produits')->get();
-            return $this->jsonResponse(true, "Listes des commandes", $commandes);
+            $commandes = Commande::with(['produits.images'])->get();
         } else {
-            // Récupérer les commandes de l'utilisateur connecté avec les produits associés et les données de la table pivot
-            $commandes = Commande::with('produits')->where('user_id', $user->id)->get();
+            $commandes = Commande::with(['produits.images'])
+                ->where('user_id', $user->id)
+                ->get();
+        }
 
-            if ($commandes->isEmpty()) {
-                return $this->jsonResponse(false, "Vous n'avez passé aucune commande.");
-            } else {
-                return $this->jsonResponse(true, "Vos commandes", $commandes);
+        // S'assurer que chaque produit n'a qu'une seule image
+        foreach ($commandes as $commande) {
+            foreach ($commande->produits as $produit) {
+                // Si le produit a des images, ne garder que la première
+                if ($produit->images->isNotEmpty()) {
+                    $produit->images = $produit->images->take(1); // Conserver seulement la première image
+                }
             }
+        }
+
+        if ($commandes->isEmpty()) {
+            return $this->jsonResponse(false, "Vous n'avez passé aucune commande.");
+        } else {
+            return $this->jsonResponse(true, "Vos commandes", $commandes);
         }
     }
 
@@ -106,12 +116,19 @@ class CommandeController extends Controller
                 $Commande->produits()->attach($commandeToSave->id, $prod);
             }
 
-
+            // Création du paiement
+            $paiement = Paiement::create([
+                'commande_id' => $Commande->id,
+                'montant' => $totalCommande,
+                'datePaiement' => $validated['method'] === 'orange_money' ? now() : null,
+                'method' => $validated['method'],
+                'status' => $validated['method'] === 'orange_money' ? true : false,
+            ]);
 
             Mail::to(Auth::user()->email)->send(new CommandeRecue($Commande));
 
             DB::commit();
-            return $this->jsonResponse(true, 'Commande créée avec succès !', $Commande, 201);
+            return $this->jsonResponse(true, 'Commande créée avec succès !', ['commande' => $Commande, 'paiement' => $paiement], 201);
         }catch (\Exception $exception){
             DB::rollBack();
             return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);

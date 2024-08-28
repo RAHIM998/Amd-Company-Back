@@ -15,21 +15,26 @@ Route::group(['middleware' => 'guest'], function () {
     Route::post('register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
 });
 
+
+//Api Contact
 Route::post('contact', [\App\Http\Controllers\Api\ContactController::class, 'store']);
-Route::get('produit/{id}/products', [ProduitController::class, 'getProductsByCategory']);
+
 
 //Api Catégory
 Route::get('category', [CategoryController::class, 'index']);
 Route::get('/search', [CategoryController::class, 'search']);
+Route::get('/category/{id}', [CategoryController::class, 'show']);
 
 //Api produit
 Route::get('produit', [ProduitController::class, 'index']);
 Route::get('produit/{id}', [ProduitController::class, 'show']);
 Route::get('search', [ProduitController::class, 'search']);
+Route::get('produit/{id}/products', [ProduitController::class, 'getProductsByCategory']);
+
 
 
 //Api qui necessite de la connexion
-//Route::group(['middleware' => 'auth:api'], function () {
+Route::group(['middleware' => 'auth:api'], function () {
     //Api de déconnexion
     Route::post('logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
 
@@ -39,18 +44,18 @@ Route::get('search', [ProduitController::class, 'search']);
     Route::put('user/{id}', [UserController::class, 'update']);
 
     //Api Catégories
-    Route::get('/category/{id}', [CategoryController::class, 'show']);
 
     //Api Paiement
     Route::post('/paiement', [PaiementController::class, 'store']);
 
 
-//Api Commande
+    //Api Commande
     Route::post('commande', [CommandeController::class, 'store']);
     Route::get('commande/{id}', [CommandeController::class, 'show']);
     Route::get('commande', [CommandeController::class, 'index']);
+    Route::delete('commande/{id}', [CommandeController::class, 'destroy']);
 
-    //Route::middleware('admin')->prefix('admin')->group(function () {
+    Route::middleware('admin')->prefix('admin')->group(function () {
         //Api Users
         Route::post('/user', [UserController::class, 'store']);
         Route::delete('/user/{id}', [UserController::class, 'destroy']);
@@ -76,7 +81,7 @@ Route::get('search', [ProduitController::class, 'search']);
         Route::get('/paiement/enAttente', [PaiementController::class, 'paiementEnAttentes']);
         Route::get('/paiement', [PaiementController::class, 'index']);
         Route::get('/paiement/{id}', [PaiementController::class, 'show']);
-    //});
+    });
 
-//});
+});
 

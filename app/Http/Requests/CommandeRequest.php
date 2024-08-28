@@ -25,7 +25,8 @@ class CommandeRequest extends FormRequest
             'produits' => 'required|array',
             'produits.*.id' => 'required|exists:produits,id',
             'produits.*.quantite' => 'required|integer|min:1',
-            'adresseLivraison' => 'required|string|max:255'
+            'adresseLivraison' => 'required|string|max:255',
+            'method' => 'required|in:delivery,orange_money',
         ];
     }
 }
