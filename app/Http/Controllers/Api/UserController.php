@@ -76,7 +76,7 @@ class UserController extends Controller
             $validated = $request->validate([
                 'name' => ['required', 'min:2', 'regex:/^[\pL\s]+$/u'],
                 'telephone' => ['required', 'regex:/^\+?\d+$/'],
-                'email' => ['required', 'email', 'unique:users,email,'.$id],
+                'email' => ['required', 'email'],
                 'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             ]);
 

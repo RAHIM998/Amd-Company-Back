@@ -16,7 +16,7 @@ class ProduitController extends Controller
     public function index()
     {
         try {
-            $produits = Produit::with('images')->get();
+            $produits = Produit::with('category', 'images')->get();
             return $this->jsonResponse(true, 'Liste des produits', $produits);
         }catch (\Exception $exception){
             return $this->jsonResponse(false, $exception->getMessage());
@@ -46,27 +46,28 @@ class ProduitController extends Controller
             // Valider les données
             $validatedData = $request->validated();
 
-            // Créer le produit en premier pour obtenir l'ID
             $product = Produit::create($validatedData);
 
             // Gérer les images
             if ($request->hasFile('image')) {
                 foreach ($request->file('image') as $image) {
-                    // Utiliser la méthode imageToBlob pour convertir l'image en base64
-                    $base64Image = $this->imageToBlob($image);
+                    if ($image->isValid()) {
+                        $base64Image = $this->imageToBlob($image);
 
-                    // Sauvegarder l'image en base64 dans la base de données
-                    ProduitImage::create([
-                        'produit_id' => $product->id, // Utiliser l'ID du produit créé
-                        'image' => $base64Image
-                    ]);
+                        if ($base64Image) {
+                            ProduitImage::create([
+                                'produit_id' => $product->id,
+                                'image' => $base64Image
+                            ]);
+                        }
+                    }
                 }
+            } else {
+                return response()->json(['error' => 'Aucune image trouvée dans la requête'], 400);
             }
-
-            // Retourner une réponse
-            return $this->jsonResponse(true, 'Produit créé avec succès !', $product, 201);
+            return $this->jsonResponse(true, 'Produits de la catégorie récupérés avec succès.', $product, 201);
         } catch (\Exception $exception) {
-            return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 400);
+            return $this->jsonResponse(false, 'Error', $exception->getMessage(), 500);
         }
     }
 
@@ -75,7 +76,7 @@ class ProduitController extends Controller
     public function show(string $id)
     {
         try {
-            $produit = Produit::with('images')->findOrFail($id);
+            $produit = Produit::with('images', 'category')->findOrFail($id);
 
 
             return $this->jsonResponse(true, 'Produit trouvé ', $produit);
@@ -86,17 +87,51 @@ class ProduitController extends Controller
     }
 
     //---------------------------------------------------------------Api de modification d'un produit------------------------------------------------------
-    public function update(ProduitRequest $request, string $id)
+    public function update(Request $request, string $id)
     {
+
         try {
-            $validatedData = $request->validated();
+            // Trouver le produit à mettre à jour
+            $productToUpdate = Produit::findOrFail($id);
 
-            $productToUpdate = Produit::FindOrFail($id);
+            // Valider les données
+            $validatedData = $request->validate([
+                'category_id' => 'required|integer|exists:categories,id',
+                'libelle' => 'required|string|max:255',
+                'prix' => 'required|numeric|min:0',
+                'stock' => 'required|integer|min:0',
+                'description' => 'nullable|string|max:1000',
+            ]);
 
-            $productToUpdate->update($validatedData);
+            // Mettre à jour les champs individuellement
+            $productToUpdate->category_id = $validatedData['category_id'];
+            $productToUpdate->libelle = $validatedData['libelle'];
+            $productToUpdate->prix = $validatedData['prix'];
+            $productToUpdate->stock = $validatedData['stock'];
+            $productToUpdate->description = $validatedData['description'];
 
-            return $this->jsonResponse(true, 'produit modifié avec succès !', $productToUpdate);
-        }catch (\Exception $exception){
+            // Gérer les images
+            if ($request->hasFile('image')) {
+                $images = $request->file('image');
+                $imagePaths = [];
+
+                foreach ($images as $image) {
+                    // Gérer le stockage de chaque image
+                    $path = $image->store('images', 'public');
+                    $imagePaths[] = $path;
+                }
+
+                // Mettre à jour le champ image avec les chemins des images
+                $productToUpdate->image = json_encode($imagePaths); // Exemple : stocker les chemins comme JSON
+            }
+
+            // Sauvegarder les modifications
+            $productToUpdate->save();
+
+            // Répondre avec succès
+            return $this->jsonResponse(true, 'Produit modifié avec succès !', $productToUpdate);
+        } catch (\Exception $exception) {
+            // Répondre en cas d'erreur
             return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
         }
     }

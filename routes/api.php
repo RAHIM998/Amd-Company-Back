@@ -71,9 +71,11 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::delete('/produit/{id}', [ProduitController::class, 'destroy']);
 
         //Api Commande
-        Route::get('/commande/encours', [CommandeController::class, 'commandeEnCoursDuJour']);
+        Route::get('/commande/encoursjours', [CommandeController::class, 'commandeEnCoursDuJour']);
         Route::get('/commande/annulee', [CommandeController::class, 'commandeAnnuleeDuJour']);
         Route::get('/commande/valide', [CommandeController::class, 'commandeValideeDuJour']);
+        Route::get('/commande/jours', [CommandeController::class, 'commandeDuJours']);
+        Route::get('/commande/encours', [CommandeController::class, 'CommandeEnCours']);
         Route::put('/commande/{id}', [CommandeController::class, 'update']);
 
         //Api Paiements

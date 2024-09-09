@@ -49,7 +49,7 @@ class CommandeController extends Controller
 
         // Récupérer les commandes avec les produits et les images associées
         if ($user->isAdmin()) {
-            $commandes = Commande::with(['produits.images'])->get();
+            $commandes = Commande::with(['produits.images', 'user'])->get();
         } else {
             $commandes = Commande::with(['produits.images'])
                 ->where('user_id', $user->id)
@@ -72,7 +72,6 @@ class CommandeController extends Controller
             return $this->jsonResponse(true, "Vos commandes", $commandes);
         }
     }
-
 
 
     //----------------------------------------------------------------------Api de sauvegarde des commandes--------------------------------------------------
@@ -139,7 +138,7 @@ class CommandeController extends Controller
     public function show(string $id)
     {
         try{
-            $commande = Commande::with('produits')->findOrFail($id);
+            $commande = Commande::with('produits', 'user', 'produits.images')->findOrFail($id);
 
             return $this->jsonResponse(true, "Commande", $commande);
 
@@ -213,13 +212,20 @@ class CommandeController extends Controller
             $commande = Commande::findOrFail($id);
             $commande->delete();
 
+            foreach ($commande->produits as $produit) {
+                $produit->increment('stock', $produit->pivot->quantite);
+            }
+
+            $paiement = Paiement::where('commande_id', $commande->id)->first();
+            if ($paiement) {
+                $paiement->delete();
+            }
+
             return $this->jsonResponse(true, "Commande annulée et supprimée avec succès !", $commande);
         } catch (\Exception $exception) {
             return $this->jsonResponse(false, 'Erreur !', $exception->getMessage(), 500);
         }
     }
-
-
 
 
     //---------------------------------------------------------Commandes en cours de la journée---------------------------------------------------------------------------
@@ -242,7 +248,8 @@ class CommandeController extends Controller
     //---------------------------------------------------------Commandes validées de la journée---------------------------------------------------------------------------
     public function commandeValideeDuJour()
     {
-        $commandeValideDuJour = Commande::whereDate('created_at', Carbon::today())
+        $commandeValideDuJour = Commande::with('user')
+            ->whereDate('created_at', Carbon::today())
             ->where('status', 'delivered')
             ->get();
 
@@ -261,6 +268,7 @@ class CommandeController extends Controller
     public function commandeAnnuleeDuJour()
     {
         $commandeAnnulee= Commande::onlyTrashed()
+            ->with('user')
             ->whereDate('deleted_at', Carbon::today())
             ->get();
 
@@ -273,6 +281,23 @@ class CommandeController extends Controller
             'MontantTotal' => $totalAmount,
             'Commande' => $commandeAnnulee
         ]);
+    }
+
+    //---------------------------------------------------------Commandes en cours---------------------------------------------------------------------------
+    public function CommandeEnCours()
+    {
+        $commandeEnCours = Commande::where('status', 'pending')->get();
+        return $this->jsonResponse(true, "Liste des commandes en cours", $commandeEnCours);
+    }
+
+
+    //---------------------------------------------------------Commandes du jours---------------------------------------------------------------------------
+    public function commandeDuJours()
+    {
+        $commandeDuJours= Commande::whereDate('created_at', Carbon::today())->get();
+
+
+        return $this->jsonResponse(true, "Liste des commandes en cours du jour", $commandeDuJours);
     }
 
 }
