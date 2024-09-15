@@ -77,6 +77,8 @@ Route::group(['middleware' => 'auth:api'], function () {
         Route::get('/commande/jours', [CommandeController::class, 'commandeDuJours']);
         Route::get('/commande/encours', [CommandeController::class, 'CommandeEnCours']);
         Route::put('/commande/{id}', [CommandeController::class, 'update']);
+        Route::get('/commande/venteMois', [CommandeController::class, 'monthlySales']);
+
 
         //Api Paiements
         Route::get('/paiement/jours', [PaiementController::class, 'paiementjournalier']);

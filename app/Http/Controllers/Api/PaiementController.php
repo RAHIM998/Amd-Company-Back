@@ -39,7 +39,7 @@ class PaiementController extends Controller
     }
 
 
-    //----------------------------------------------------------------------Payements du jours-------------------------------------------------------------------
+    //----------------------------------------------------------------------Payements en attentes-------------------------------------------------------------------
     public function paiementEnAttentes()
     {
         $paiementEnAttente= Paiement::where('status', false)->with('commande')->get();
@@ -47,7 +47,7 @@ class PaiementController extends Controller
         $montantTotal = $paiementEnAttente->sum('montant');
 
         return $this->jsonResponse(true, "Liste des paiements du jour", [
-            'MontantPaiementEnAttente:' => $montantTotal,
+            'MontantPaiementEnAttente' => $montantTotal,
             'PaiementDuJour' => $paiementEnAttente,
         ]);
     }

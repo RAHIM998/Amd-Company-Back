@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\NotificationCommande;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CommandeRequest;
 use App\Mail\CommandeAcceptee;
@@ -46,10 +47,11 @@ class CommandeController extends Controller
     public function index()
     {
         $user = Auth::user();
-
         // Récupérer les commandes avec les produits et les images associées
         if ($user->isAdmin()) {
-            $commandes = Commande::with(['produits.images', 'user'])->get();
+            $commandes = Commande::with(['produits.images', 'user'])
+                ->orderBy('created_at', 'desc')
+                ->get();
         } else {
             $commandes = Commande::with(['produits.images'])
                 ->where('user_id', $user->id)
@@ -72,7 +74,6 @@ class CommandeController extends Controller
             return $this->jsonResponse(true, "Vos commandes", $commandes);
         }
     }
-
 
     //----------------------------------------------------------------------Api de sauvegarde des commandes--------------------------------------------------
     public function store(CommandeRequest $request)
@@ -125,8 +126,8 @@ class CommandeController extends Controller
             ]);
 
             Mail::to(Auth::user()->email)->send(new CommandeRecue($Commande));
-
             DB::commit();
+            event(new NotificationCommande($Commande));
             return $this->jsonResponse(true, 'Commande créée avec succès !', ['commande' => $Commande, 'paiement' => $paiement], 201);
         }catch (\Exception $exception){
             DB::rollBack();
@@ -298,6 +299,22 @@ class CommandeController extends Controller
 
 
         return $this->jsonResponse(true, "Liste des commandes en cours du jour", $commandeDuJours);
+    }
+
+
+    //---------------------------------------------------------Ventes par mois de l'année---------------------------------------------------------------------------
+    public function monthlySales()
+    {
+        $monthlySales = Commande::select(
+            DB::raw('MONTH(created_at) as month'),
+            DB::raw('SUM(montant) as total_sales')
+        )
+            ->where('status', 'delivered')
+            ->whereYear('created_at', Carbon::now()->year)
+            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->get();
+
+        return $this->jsonResponse(true, "Ventes mensuelles pour l'année en cours", $monthlySales);
     }
 
 }

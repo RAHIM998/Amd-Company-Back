@@ -34,6 +34,8 @@ class UserController extends Controller
             if ($request->hasFile('image')) {
                 $image = $this->imageToBlob($request->file('image'));
                 $validatedData['image'] = $image;
+            }else {
+                $validatedData['image'] = null;
             }
 
             $users = User::create([
@@ -69,10 +71,7 @@ class UserController extends Controller
     //-----------------------------------------------------------------------Api de modification des users----------------------------------------------------------
     public function update(Request $request, string $id)
     {
-
         try {
-
-            // Validation des données d'entrée
             $validated = $request->validate([
                 'name' => ['required', 'min:2', 'regex:/^[\pL\s]+$/u'],
                 'telephone' => ['required', 'regex:/^\+?\d+$/'],
@@ -82,12 +81,16 @@ class UserController extends Controller
 
             $user = User::findOrFail($id);
 
-            // Mise à jour des données de l'utilisateur
             $user->name = $validated['name'];
             $user->telephone = $validated['telephone'];
             $user->email = $validated['email'];
+
+            if (!empty($validated['password'])) {
+                $user->password = Hash::make($validated['password']);
+            }
+
             if ($request->hasFile('image')) {
-                $encodedImage = $this->imageToBlob($request->file('image'));
+                $encodedImage = $this->imageToBlob($request->file('image')); // Transformer l'image en base64
                 $user->image = $encodedImage;
             }
 
